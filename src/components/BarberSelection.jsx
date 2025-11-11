@@ -90,7 +90,7 @@ const BarberSelection = ({ onSelect }) => {
                 {/* Avatar del barbero */}
                 {barber.image_url ? (
                   <img
-                    src={`https://tu-backend.vercel.app${barber.image_url}`}
+                    src={`https://backend-grid-barbers-k2jy.vercel.app/${barber.image_url}`}
                     alt={barber.name}
                     className="w-20 h-20 object-cover rounded-full mx-auto mb-4 shadow-lg border-2 border-barberCream"
                   />
