@@ -114,14 +114,6 @@ const AdminLogin = ({ onLogin, onBack }) => {
               )}
             </button>
           </form>
-
-          <div className="mt-6 p-4 bg-barberCream rounded-xl border border-barberCream">
-            <p className="text-barberGray text-sm text-center">
-              <strong>Credenciales de prueba:</strong><br />
-              Usuario: <code className="bg-white px-2 py-1 rounded">admin</code><br />
-              Contraseña: <code className="bg-white px-2 py-1 rounded">admin123</code>
-            </p>
-          </div>
         </div>
       </div>
     </div>
