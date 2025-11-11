@@ -6,8 +6,9 @@ import TimeSlot from './components/TimeSlot';
 import AppointmentForm from './components/AppointmentForm';
 import AdminPanel from './components/AdminPanel';
 import AdminLogin from './components/AdminLogin';
+import LandingPage from './components/LandingPage';
 import { barbersAPI, servicesAPI } from './services/api';
-import { startHealthCheck, stopHealthCheck } from './services/healthCheck';
+import useServerHealth from './hooks/useServerHealth';
 
 function App() {
   const [step, setStep] = useState(1);
@@ -19,19 +20,22 @@ function App() {
   const [selectedTime, setSelectedTime] = useState(null);
   const [view, setView] = useState('client');
   const [adminUser, setAdminUser] = useState(null);
+  const [dataLoaded, setDataLoaded] = useState(false);
+
+  const { serverReady, loading, retry } = useServerHealth();
 
   useEffect(() => {
     const savedUser = localStorage.getItem('adminUser');
     if (savedUser) {
       setAdminUser(JSON.parse(savedUser));
     }
-    loadInitialData();
-    startHealthCheck(); // Iniciar health checks
-
-    return () => {
-      stopHealthCheck(); // Limpiar al desmontar
-    };
   }, []);
+
+  useEffect(() => {
+    if (serverReady && !dataLoaded) {
+      loadInitialData();
+    }
+  }, [serverReady, dataLoaded]);
 
   const loadInitialData = async () => {
     try {
@@ -41,10 +45,35 @@ function App() {
       ]);
       setBarbers(barbersRes.data);
       setServices(servicesRes.data);
+      setDataLoaded(true);
     } catch (error) {
       console.error('Error loading data:', error);
+      // Si falla, el servidor podría haberse vuelto a dormir
+      setDataLoaded(false);
     }
   };
+
+  // Mostrar landing page si el servidor no está listo
+  if (!serverReady) {
+    return (
+      <LandingPage 
+        onRetry={retry} 
+        loading={loading}
+      />
+    );
+  }
+
+  // Mostrar loading de datos
+  if (serverReady && !dataLoaded) {
+    return (
+      <div className="min-h-screen bg-barberCream flex items-center justify-center">
+        <div className="text-center">
+          <div className="loading-spinner loading-spinner-large mx-auto mb-4"></div>
+          <p className="text-barberGray">Cargando datos...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Navegación intuitiva - un solo paso a la vez
   const handleBarberSelect = (barber) => {
