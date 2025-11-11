@@ -494,7 +494,7 @@ const AdminPanel = ({ onBack, user }) => {
                       <div className="flex items-start space-x-4 flex-1">
                         {barber.image_url && (
                           <img
-                            src={`https://backendgridbarbers.onrender.com${barber.image_url}`}
+                            src={`https://tu-backend.vercel.app${barber.image_url}`}
                             alt={barber.name}
                             className="w-16 h-16 object-cover rounded-xl border-2 border-barberCream flex-shrink-0"
                           />
