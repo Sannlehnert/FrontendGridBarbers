@@ -5,10 +5,19 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://backendgridbarbers
 
 const api = axios.create({
   baseURL: API_BASE_URL,
+  timeout: 30000, // 30 segundos timeout para cold start
 });
 
-// Interceptor para agregar token de autenticación
+// Interceptor para mostrar loading global
+let loadingCount = 0;
+
 api.interceptors.request.use((config) => {
+  loadingCount++;
+  if (loadingCount === 1) {
+    // Mostrar loading global
+    document.body.classList.add('loading');
+  }
+  
   const token = localStorage.getItem('adminToken');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -16,19 +25,36 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Interceptor para manejar errores globalmente
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    loadingCount--;
+    if (loadingCount === 0) {
+      document.body.classList.remove('loading');
+    }
+    return response;
+  },
   (error) => {
+    loadingCount--;
+    if (loadingCount === 0) {
+      document.body.classList.remove('loading');
+    }
+    
     console.error('API Error:', error);
+    
+    if (error.code === 'ECONNABORTED') {
+      alert('El servidor está tardando en responder. Esto es normal la primera vez. Intenta nuevamente en 30 segundos.');
+    }
+    
     if (error.response?.status === 401) {
       localStorage.removeItem('adminToken');
       localStorage.removeItem('adminUser');
       window.location.reload();
     }
+    
     if (error.response?.status === 409) {
       alert('El horario seleccionado ya no está disponible. Por favor elige otro horario.');
     }
+    
     return Promise.reject(error);
   }
 );

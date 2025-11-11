@@ -1,6 +1,67 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { barbersAPI } from '../services/api';
 
-const BarberSelection = ({ barbers, onSelect }) => {
+const BarberSelection = ({ onSelect }) => {
+  const [barbers, setBarbers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
+
+  useEffect(() => {
+    loadBarbers();
+  }, [retryCount]);
+
+  const loadBarbers = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await barbersAPI.getAll();
+      setBarbers(response.data);
+    } catch (error) {
+      console.error('Error loading barbers:', error);
+      setError('El servidor está despertando... Esto puede tomar hasta 60 segundos.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRetry = () => {
+    setRetryCount(prev => prev + 1);
+  };
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-2xl shadow-lg p-6 border border-barberCream fade-in">
+        <div className="text-center py-12">
+          <div className="loading-spinner loading-spinner-large mx-auto mb-4"></div>
+          <p className="text-barberGray mb-2">Cargando nuestro equipo...</p>
+          <p className="text-barberGray text-sm">⏰ Esto puede tomar hasta 60 segundos la primera vez</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white rounded-2xl shadow-lg p-6 border border-barberCream fade-in">
+        <div className="text-center py-8">
+          <div className="text-6xl mb-4">😴</div>
+          <h3 className="text-xl font-display font-bold text-barberDark mb-2">Servidor en reposo</h3>
+          <p className="text-barberGray mb-4">{error}</p>
+          <p className="text-barberGray text-sm mb-6">
+            Los servicios gratuitos se duermen después de 15 minutos de inactividad
+          </p>
+          <button
+            onClick={handleRetry}
+            className="bg-red-100 hover:bg-red-200 text-black px-6 py-3 rounded-xl font-semibold transition-all duration-300 hover-lift"
+          >
+            🔄 Intentar nuevamente
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white rounded-2xl shadow-lg p-6 border border-barberCream fade-in">
       <div className="text-center mb-8">
@@ -50,7 +111,6 @@ const BarberSelection = ({ barbers, onSelect }) => {
                   <p className="text-barberBlue text-sm font-medium">{barber.phone}</p>
                 )}
                 
-                {/* Botón de selección mejorado */}
                 <button className="mt-4 w-full bg-red-100 hover:bg-red-200 text-black py-3 rounded-xl font-semibold transition-all duration-300 group-hover:scale-105 shadow-md">
                   Seleccionar
                 </button>
@@ -60,7 +120,6 @@ const BarberSelection = ({ barbers, onSelect }) => {
         </div>
       )}
       
-      {/* Indicador visual de progreso */}
       <div className="mt-8 text-center">
         <p className="text-barberGray text-sm">
           Paso 1 de 5 • Elige tu barbero

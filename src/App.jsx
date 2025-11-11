@@ -7,6 +7,7 @@ import AppointmentForm from './components/AppointmentForm';
 import AdminPanel from './components/AdminPanel';
 import AdminLogin from './components/AdminLogin';
 import { barbersAPI, servicesAPI } from './services/api';
+import { startHealthCheck, stopHealthCheck } from './services/healthCheck';
 
 function App() {
   const [step, setStep] = useState(1);
@@ -25,6 +26,11 @@ function App() {
       setAdminUser(JSON.parse(savedUser));
     }
     loadInitialData();
+    startHealthCheck(); // Iniciar health checks
+
+    return () => {
+      stopHealthCheck(); // Limpiar al desmontar
+    };
   }, []);
 
   const loadInitialData = async () => {
@@ -103,23 +109,22 @@ function App() {
                 </div>
               </div>
             </div>
-            
+
             <h1 className="text-3xl sm:text-4xl font-display font-bold text-barberDark mb-2">
               Grid Barbers
             </h1>
             <p className="text-barberGray text-base sm:text-lg max-w-md mx-auto leading-relaxed px-2">
               Reserva tu corte perfecto en 5 minutos
             </p>
-            
+
             {/* Progreso Visual Mejorado */}
             <div className="mt-6 sm:mt-8 max-w-2xl mx-auto px-2">
               <div className="flex items-center justify-between mb-2">
                 {['Barbero', 'Servicio', 'Fecha', 'Hora', 'Listo'].map((label, index) => (
                   <div key={label} className="text-center flex-1">
-                    <div className={`text-xs sm:text-sm font-medium ${
-                      step > index + 1 ? 'text-barberBlue' :
-                      step === index + 1 ? 'text-barberRed' : 'text-barberGray'
-                    }`}>
+                    <div className={`text-xs sm:text-sm font-medium ${step > index + 1 ? 'text-barberBlue' :
+                        step === index + 1 ? 'text-barberRed' : 'text-barberGray'
+                      }`}>
                       {label}
                     </div>
                   </div>
@@ -128,17 +133,15 @@ function App() {
               <div className="flex items-center">
                 {[1, 2, 3, 4, 5].map((s) => (
                   <React.Fragment key={s}>
-                    <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-semibold transition-all duration-500 ${
-                      step >= s
+                    <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-semibold transition-all duration-500 ${step >= s
                         ? 'bg-barberRed text-barberWhite shadow-lg transform scale-110'
                         : 'bg-white text-barberGray border-2 border-barberGray'
-                    }`}>
+                      }`}>
                       {s}
                     </div>
                     {s < 5 && (
-                      <div className={`flex-1 h-1 transition-all duration-500 ${
-                        step > s ? 'bg-barberRed' : 'bg-gray-200'
-                      }`} />
+                      <div className={`flex-1 h-1 transition-all duration-500 ${step > s ? 'bg-barberRed' : 'bg-gray-200'
+                        }`} />
                     )}
                   </React.Fragment>
                 ))}
@@ -163,22 +166,22 @@ function App() {
             )}
 
             {step === 2 && (
-              <ServiceSelection 
-                services={services} 
+              <ServiceSelection
+                services={services}
                 onSelect={handleServiceSelect}
                 onBack={() => setStep(1)}
               />
             )}
 
             {step === 3 && (
-              <DatePicker 
+              <DatePicker
                 onSelect={handleDateSelect}
                 onBack={() => setStep(2)}
               />
             )}
 
             {step === 4 && (
-              <TimeSlot 
+              <TimeSlot
                 barber={selectedBarber}
                 service={selectedService}
                 date={selectedDate}
@@ -241,6 +244,14 @@ function App() {
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Información sobre cold start */}
+          <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-xl text-center">
+            <p className="text-yellow-800 text-sm">
+              ⚡ <strong>Nota:</strong> La primera carga puede tomar hasta 60 segundos porque el servidor está despertando.
+              Las siguientes cargas serán instantáneas.
+            </p>
           </div>
 
           {/* Footer con estilo clásico */}
