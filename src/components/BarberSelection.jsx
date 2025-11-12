@@ -1,67 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { barbersAPI } from '../services/api';
+import React from 'react';
 
-const BarberSelection = ({ onSelect }) => {
-  const [barbers, setBarbers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [retryCount, setRetryCount] = useState(0);
-
-  useEffect(() => {
-    loadBarbers();
-  }, [retryCount]);
-
-  const loadBarbers = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await barbersAPI.getAll();
-      setBarbers(response.data);
-    } catch (error) {
-      console.error('Error loading barbers:', error);
-      setError('El servidor está despertando... Esto puede tomar hasta 60 segundos.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleRetry = () => {
-    setRetryCount(prev => prev + 1);
-  };
-
-  if (loading) {
-    return (
-      <div className="bg-white rounded-2xl shadow-lg p-6 border border-barberCream fade-in">
-        <div className="text-center py-12">
-          <div className="loading-spinner loading-spinner-large mx-auto mb-4"></div>
-          <p className="text-barberGray mb-2">Cargando nuestro equipo...</p>
-          <p className="text-barberGray text-sm">⏰ Esto puede tomar hasta 60 segundos la primera vez</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="bg-white rounded-2xl shadow-lg p-6 border border-barberCream fade-in">
-        <div className="text-center py-8">
-          <div className="text-6xl mb-4">😴</div>
-          <h3 className="text-xl font-display font-bold text-barberDark mb-2">Servidor en reposo</h3>
-          <p className="text-barberGray mb-4">{error}</p>
-          <p className="text-barberGray text-sm mb-6">
-            Los servicios gratuitos se duermen después de 15 minutos de inactividad
-          </p>
-          <button
-            onClick={handleRetry}
-            className="bg-red-100 hover:bg-red-200 text-black px-6 py-3 rounded-xl font-semibold transition-all duration-300 hover-lift"
-          >
-            🔄 Intentar nuevamente
-          </button>
-        </div>
-      </div>
-    );
-  }
-
+const BarberSelection = ({ barbers, onSelect }) => {
   return (
     <div className="bg-white rounded-2xl shadow-lg p-6 border border-barberCream fade-in">
       <div className="text-center mb-8">
@@ -87,18 +26,10 @@ const BarberSelection = ({ onSelect }) => {
               onClick={() => onSelect(barber)}
             >
               <div className="text-center">
-                {/* Avatar del barbero */}
-                {barber.image_url ? (
-                  <img
-                    src={`https://backend-grid-barbers-k2jy.vercel.app/${barber.image_url}`}
-                    alt={barber.name}
-                    className="w-20 h-20 object-cover rounded-full mx-auto mb-4 shadow-lg border-2 border-barberCream"
-                  />
-                ) : (
-                  <div className="w-20 h-20 bg-gradient-to-r from-red-100 to-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 text-black text-2xl shadow-lg">
-                    👨‍💼
-                  </div>
-                )}
+                {/* SOLO AVATAR POR DEFECTO - ELIMINAMOS COMPLETAMENTE LAS IMÁGENES */}
+                <div className="w-20 h-20 bg-gradient-to-r from-red-100 to-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 text-black text-2xl shadow-lg border-2 border-barberCream">
+                  👨‍💼
+                </div>
                 
                 <h3 className="font-display text-xl font-semibold text-barberDark mb-2">
                   {barber.name}

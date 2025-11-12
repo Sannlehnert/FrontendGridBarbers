@@ -6,9 +6,7 @@ import TimeSlot from './components/TimeSlot';
 import AppointmentForm from './components/AppointmentForm';
 import AdminPanel from './components/AdminPanel';
 import AdminLogin from './components/AdminLogin';
-import LandingPage from './components/LandingPage';
 import { barbersAPI, servicesAPI } from './services/api';
-import useServerHealth from './hooks/useServerHealth';
 
 function App() {
   const [step, setStep] = useState(1);
@@ -20,22 +18,14 @@ function App() {
   const [selectedTime, setSelectedTime] = useState(null);
   const [view, setView] = useState('client');
   const [adminUser, setAdminUser] = useState(null);
-  const [dataLoaded, setDataLoaded] = useState(false);
-
-  const { serverReady, loading, retry } = useServerHealth();
 
   useEffect(() => {
     const savedUser = localStorage.getItem('adminUser');
     if (savedUser) {
       setAdminUser(JSON.parse(savedUser));
     }
+    loadInitialData();
   }, []);
-
-  useEffect(() => {
-    if (serverReady && !dataLoaded) {
-      loadInitialData();
-    }
-  }, [serverReady, dataLoaded]);
 
   const loadInitialData = async () => {
     try {
@@ -45,35 +35,10 @@ function App() {
       ]);
       setBarbers(barbersRes.data);
       setServices(servicesRes.data);
-      setDataLoaded(true);
     } catch (error) {
       console.error('Error loading data:', error);
-      // Si falla, el servidor podría haberse vuelto a dormir
-      setDataLoaded(false);
     }
   };
-
-  // Mostrar landing page si el servidor no está listo
-  if (!serverReady) {
-    return (
-      <LandingPage 
-        onRetry={retry} 
-        loading={loading}
-      />
-    );
-  }
-
-  // Mostrar loading de datos
-  if (serverReady && !dataLoaded) {
-    return (
-      <div className="min-h-screen bg-barberCream flex items-center justify-center">
-        <div className="text-center">
-          <div className="loading-spinner loading-spinner-large mx-auto mb-4"></div>
-          <p className="text-barberGray">Cargando datos...</p>
-        </div>
-      </div>
-    );
-  }
 
   // Navegación intuitiva - un solo paso a la vez
   const handleBarberSelect = (barber) => {
@@ -138,22 +103,23 @@ function App() {
                 </div>
               </div>
             </div>
-
+            
             <h1 className="text-3xl sm:text-4xl font-display font-bold text-barberDark mb-2">
               Grid Barbers
             </h1>
             <p className="text-barberGray text-base sm:text-lg max-w-md mx-auto leading-relaxed px-2">
               Reserva tu corte perfecto en 5 minutos
             </p>
-
+            
             {/* Progreso Visual Mejorado */}
             <div className="mt-6 sm:mt-8 max-w-2xl mx-auto px-2">
               <div className="flex items-center justify-between mb-2">
                 {['Barbero', 'Servicio', 'Fecha', 'Hora', 'Listo'].map((label, index) => (
                   <div key={label} className="text-center flex-1">
-                    <div className={`text-xs sm:text-sm font-medium ${step > index + 1 ? 'text-barberBlue' :
-                        step === index + 1 ? 'text-barberRed' : 'text-barberGray'
-                      }`}>
+                    <div className={`text-xs sm:text-sm font-medium ${
+                      step > index + 1 ? 'text-barberBlue' :
+                      step === index + 1 ? 'text-barberRed' : 'text-barberGray'
+                    }`}>
                       {label}
                     </div>
                   </div>
@@ -162,15 +128,17 @@ function App() {
               <div className="flex items-center">
                 {[1, 2, 3, 4, 5].map((s) => (
                   <React.Fragment key={s}>
-                    <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-semibold transition-all duration-500 ${step >= s
+                    <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-semibold transition-all duration-500 ${
+                      step >= s
                         ? 'bg-barberRed text-barberWhite shadow-lg transform scale-110'
                         : 'bg-white text-barberGray border-2 border-barberGray'
-                      }`}>
+                    }`}>
                       {s}
                     </div>
                     {s < 5 && (
-                      <div className={`flex-1 h-1 transition-all duration-500 ${step > s ? 'bg-barberRed' : 'bg-gray-200'
-                        }`} />
+                      <div className={`flex-1 h-1 transition-all duration-500 ${
+                        step > s ? 'bg-barberRed' : 'bg-gray-200'
+                      }`} />
                     )}
                   </React.Fragment>
                 ))}
@@ -195,22 +163,22 @@ function App() {
             )}
 
             {step === 2 && (
-              <ServiceSelection
-                services={services}
+              <ServiceSelection 
+                services={services} 
                 onSelect={handleServiceSelect}
                 onBack={() => setStep(1)}
               />
             )}
 
             {step === 3 && (
-              <DatePicker
+              <DatePicker 
                 onSelect={handleDateSelect}
                 onBack={() => setStep(2)}
               />
             )}
 
             {step === 4 && (
-              <TimeSlot
+              <TimeSlot 
                 barber={selectedBarber}
                 service={selectedService}
                 date={selectedDate}
@@ -273,14 +241,6 @@ function App() {
                 </div>
               </div>
             )}
-          </div>
-
-          {/* Información sobre cold start */}
-          <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-xl text-center">
-            <p className="text-yellow-800 text-sm">
-              ⚡ <strong>Nota:</strong> La primera carga puede tomar hasta 60 segundos porque el servidor está despertando.
-              Las siguientes cargas serán instantáneas.
-            </p>
           </div>
 
           {/* Footer con estilo clásico */}

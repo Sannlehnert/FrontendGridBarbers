@@ -1,14 +1,16 @@
 {
   "name": "barberia-frontend",
   "private": true,
-  "version": "1.0.0",
+  "version": "2.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
-    "netlify-build": "npm run build"
+    "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
+    "netlify-build": "npm run build",
+    "predeploy": "npm run build",
+    "setup-deploy": "node deploy-setup.mjs"
   },
   "dependencies": {
     "axios": "^1.5.0",
@@ -27,6 +29,7 @@
     "eslint-plugin-react-refresh": "^0.4.3",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.18",
+    "terser": "^5.44.1",
     "vite": "^4.4.5"
   }
 }

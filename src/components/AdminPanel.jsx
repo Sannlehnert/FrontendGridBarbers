@@ -132,23 +132,32 @@ const AdminPanel = ({ onBack, user }) => {
       phone: barber.phone,
       image: null
     });
-    setImagePreview(barber.image_url ? `https://backendgridbarbers.onrender.com${barber.image_url}` : null);
+
+    // Manejar URL de imagen en producción
+    let imageUrl = barber.image_url;
+    if (imageUrl && !imageUrl.startsWith('http')) {
+      imageUrl = `${import.meta.env.VITE_API_URL?.replace('/api', '')}${barber.image_url}`;
+    }
+    setImagePreview(imageUrl);
     setShowBarberForm(true);
   };
 
-  const handleDeleteBarber = async (barberId) => {
-    if (window.confirm('¿Estás seguro de que quieres eliminar este barbero? Esta acción no se puede deshacer.')) {
-      try {
-        await barbersAPI.delete(barberId);
-        alert('Barbero eliminado exitosamente');
-        loadBarbers();
-      } catch (error) {
-        console.error('Error deleting barber:', error);
-        alert('Error al eliminar el barbero: ' + (error.response?.data?.error || error.message));
-      }
-    }
-  };
-
+  // En el render de barberos:
+  {
+    barber.image_url && (
+      <img
+        src={barber.image_url.startsWith('http')
+          ? barber.image_url
+          : `${import.meta.env.VITE_API_URL?.replace('/api', '')}${barber.image_url}`
+        }
+        alt={barber.name}
+        className="w-16 h-16 object-cover rounded-xl border-2 border-barberCream flex-shrink-0"
+        onError={(e) => {
+          e.target.style.display = 'none';
+        }}
+      />
+    )
+  }
   const resetBarberForm = () => {
     setShowBarberForm(false);
     setEditingBarber(null);
@@ -193,21 +202,19 @@ const AdminPanel = ({ onBack, user }) => {
             <nav className="flex -mb-px">
               <button
                 onClick={() => setActiveTab('appointments')}
-                className={`py-4 px-6 text-center border-b-2 font-semibold text-sm transition-all duration-300 ${
-                  activeTab === 'appointments'
+                className={`py-4 px-6 text-center border-b-2 font-semibold text-sm transition-all duration-300 ${activeTab === 'appointments'
                     ? 'border-barberRed text-barberRed'
                     : 'border-transparent text-barberGray hover:text-barberDark hover:border-barberGray'
-                }`}
+                  }`}
               >
                 📅 Gestión de Turnos
               </button>
               <button
                 onClick={() => setActiveTab('barbers')}
-                className={`py-4 px-6 text-center border-b-2 font-semibold text-sm transition-all duration-300 ${
-                  activeTab === 'barbers'
+                className={`py-4 px-6 text-center border-b-2 font-semibold text-sm transition-all duration-300 ${activeTab === 'barbers'
                     ? 'border-barberRed text-barberRed'
                     : 'border-transparent text-barberGray hover:text-barberDark hover:border-barberGray'
-                }`}
+                  }`}
               >
                 👨‍💼 Gestión de Barberos
               </button>
@@ -304,33 +311,32 @@ const AdminPanel = ({ onBack, user }) => {
                             })}
                           </td>
                           <td className="px-2 sm:px-4 py-3">
-                            <span className={`px-2 sm:px-3 py-1 rounded-full text-xs font-semibold ${
-                              appointment.status === 'confirmed'
+                            <span className={`px-2 sm:px-3 py-1 rounded-full text-xs font-semibold ${appointment.status === 'confirmed'
                                 ? 'bg-green-100 text-green-800'
                                 : appointment.status === 'pending'
-                                ? 'bg-yellow-100 text-yellow-800'
-                                : 'bg-red-100 text-red-800'
-                            }`}>
+                                  ? 'bg-yellow-100 text-yellow-800'
+                                  : 'bg-red-100 text-red-800'
+                              }`}>
                               {appointment.status === 'confirmed' ? 'Confirmado' :
-                              appointment.status === 'pending' ? 'Pendiente' : 'Cancelado'}
+                                appointment.status === 'pending' ? 'Pendiente' : 'Cancelado'}
                             </span>
                           </td>
                           <td className="px-2 sm:px-4 py-3">
                             <div className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-2">
                               {appointment.status === 'pending' && (
                                 <>
-            <button
-              onClick={() => handleConfirmAppointment(appointment.id)}
-              className="bg-green-100 hover:bg-green-200 text-black px-2 sm:px-3 py-1 rounded-xl text-sm sm:text-base font-semibold transition-all duration-300 hover-lift"
-            >
-              Confirmar
-            </button>
-            <button
-              onClick={() => handleCancelAppointment(appointment.id)}
-              className="bg-red-100 hover:bg-red-200 text-black px-2 sm:px-3 py-1 rounded-xl text-sm sm:text-base font-semibold transition-all duration-300 hover-lift"
-            >
-              Cancelar
-            </button>
+                                  <button
+                                    onClick={() => handleConfirmAppointment(appointment.id)}
+                                    className="bg-green-100 hover:bg-green-200 text-black px-2 sm:px-3 py-1 rounded-xl text-sm sm:text-base font-semibold transition-all duration-300 hover-lift"
+                                  >
+                                    Confirmar
+                                  </button>
+                                  <button
+                                    onClick={() => handleCancelAppointment(appointment.id)}
+                                    className="bg-red-100 hover:bg-red-200 text-black px-2 sm:px-3 py-1 rounded-xl text-sm sm:text-base font-semibold transition-all duration-300 hover-lift"
+                                  >
+                                    Cancelar
+                                  </button>
                                 </>
                               )}
                               {appointment.status === 'confirmed' && (
@@ -402,7 +408,7 @@ const AdminPanel = ({ onBack, user }) => {
                     <input
                       type="text"
                       value={barberForm.name}
-                      onChange={(e) => setBarberForm({...barberForm, name: e.target.value})}
+                      onChange={(e) => setBarberForm({ ...barberForm, name: e.target.value })}
                       required
                       className="w-full p-3 bg-white border-2 border-barberCream rounded-xl focus:border-barberBlue focus:outline-none"
                       placeholder="Ej: Carlos Rodríguez"
@@ -415,7 +421,7 @@ const AdminPanel = ({ onBack, user }) => {
                     <input
                       type="email"
                       value={barberForm.email}
-                      onChange={(e) => setBarberForm({...barberForm, email: e.target.value})}
+                      onChange={(e) => setBarberForm({ ...barberForm, email: e.target.value })}
                       className="w-full p-3 bg-white border-2 border-barberCream rounded-xl focus:border-barberBlue focus:outline-none"
                       placeholder="Ej: carlos@barberia.com"
                     />
@@ -427,7 +433,7 @@ const AdminPanel = ({ onBack, user }) => {
                     <input
                       type="tel"
                       value={barberForm.phone}
-                      onChange={(e) => setBarberForm({...barberForm, phone: e.target.value})}
+                      onChange={(e) => setBarberForm({ ...barberForm, phone: e.target.value })}
                       className="w-full p-3 bg-white border-2 border-barberCream rounded-xl focus:border-barberBlue focus:outline-none"
                       placeholder="Ej: +541123456789"
                     />
@@ -442,7 +448,7 @@ const AdminPanel = ({ onBack, user }) => {
                       onChange={(e) => {
                         const file = e.target.files[0];
                         if (file) {
-                          setBarberForm({...barberForm, image: file});
+                          setBarberForm({ ...barberForm, image: file });
                           const reader = new FileReader();
                           reader.onload = (e) => setImagePreview(e.target.result);
                           reader.readAsDataURL(file);
@@ -494,7 +500,7 @@ const AdminPanel = ({ onBack, user }) => {
                       <div className="flex items-start space-x-4 flex-1">
                         {barber.image_url && (
                           <img
-                            src={`https://backend-grid-barbers-k2jy.vercel.app/${barber.image_url}`}
+                            src={`https://backendgridbarbers.onrender.com${barber.image_url}`}
                             alt={barber.name}
                             className="w-16 h-16 object-cover rounded-xl border-2 border-barberCream flex-shrink-0"
                           />
@@ -513,20 +519,20 @@ const AdminPanel = ({ onBack, user }) => {
                         </div>
                       </div>
                       <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 ml-4">
-                      <button
-                        onClick={() => handleEditBarber(barber)}
-                        className="bg-blue-100 hover:bg-blue-200 text-black px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-300 hover-lift w-full sm:w-auto"
-                        title="Editar barbero"
-                      >
-                        ✏️ Editar
-                      </button>
-                      <button
-                        onClick={() => handleDeleteBarber(barber.id)}
-                        className="bg-red-100 hover:bg-red-200 text-black px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-300 hover-lift w-full sm:w-auto"
-                        title="Eliminar barbero"
-                      >
-                        🗑️ Eliminar
-                      </button>
+                        <button
+                          onClick={() => handleEditBarber(barber)}
+                          className="bg-blue-100 hover:bg-blue-200 text-black px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-300 hover-lift w-full sm:w-auto"
+                          title="Editar barbero"
+                        >
+                          ✏️ Editar
+                        </button>
+                        <button
+                          onClick={() => handleDeleteBarber(barber.id)}
+                          className="bg-red-100 hover:bg-red-200 text-black px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-300 hover-lift w-full sm:w-auto"
+                          title="Eliminar barbero"
+                        >
+                          🗑️ Eliminar
+                        </button>
                       </div>
                     </div>
                   </div>
