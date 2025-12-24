@@ -93,19 +93,6 @@ const AdminLogin = ({ onLogin, onBack }) => {
               Panel Administrador
             </h1>
             <p className="text-barberGray dark:text-gray-400">Acceso exclusivo para el equipo</p>
-            
-            {/* Datos de prueba */}
-            <div className="mt-4 p-3 bg-barberCream dark:bg-gray-700 rounded-xl">
-              <p className="text-sm text-barberGray dark:text-gray-300 mb-1">
-                <strong>Datos de prueba:</strong>
-              </p>
-              <p className="text-xs text-barberGray dark:text-gray-400">
-                Usuario: <strong>admin</strong> | Contraseña: <strong>admin123</strong>
-              </p>
-              <p className="text-xs text-barberGray dark:text-gray-400">
-                Usuario: <strong>staff</strong> | Contraseña: <strong>staff123</strong>
-              </p>
-            </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
