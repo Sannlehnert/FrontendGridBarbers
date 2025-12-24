@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import PropTypes from 'prop-types';
-import { authAPI } from '../services/api';
+import { useNotification } from '../contexts/NotificationContext';
 
 const AdminLogin = ({ onLogin, onBack }) => {
   const [formData, setFormData] = useState({
@@ -9,6 +9,14 @@ const AdminLogin = ({ onLogin, onBack }) => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const { showSuccess, showError } = useNotification();
+
+  // Datos de prueba para desarrollo
+  const mockUsers = [
+    { username: 'admin', password: 'admin123', name: 'Administrador', role: 'admin' },
+    { username: 'staff', password: 'staff123', name: 'Staff Member', role: 'staff' },
+    { username: 'barber', password: 'barber123', name: 'Barbero Master', role: 'barber' }
+  ];
 
   const handleChange = (e) => {
     setFormData({
@@ -24,49 +32,91 @@ const AdminLogin = ({ onLogin, onBack }) => {
     setError('');
 
     try {
-      const response = await authAPI.login(formData);
-      
-      if (response.data) {
-        localStorage.setItem('adminToken', response.data.token);
-        localStorage.setItem('adminUser', JSON.stringify(response.data.user));
-        onLogin(response.data.user);
+      // Simulamos delay de red
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      // Buscar usuario en datos mock
+      const user = mockUsers.find(u => 
+        u.username === formData.username && u.password === formData.password
+      );
+
+      if (!user) {
+        throw new Error('Usuario o contraseña incorrectos');
       }
+
+      // Crear token mock
+      const token = `mock_token_${user.username}_${Date.now()}`;
+      
+      // Guardar en localStorage
+      localStorage.setItem('adminToken', token);
+      localStorage.setItem('adminUser', JSON.stringify({
+        id: Date.now(),
+        username: user.username,
+        name: user.name,
+        role: user.role
+      }));
+
+      showSuccess(`¡Bienvenido ${user.name}!`);
+      onLogin({
+        id: Date.now(),
+        username: user.username,
+        name: user.name,
+        role: user.role
+      });
+
     } catch (error) {
-      setError(error.response?.data?.error || 'Error de conexión');
+      const errorMessage = error.message || 'Error de conexión';
+      setError(errorMessage);
+      showError(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-barberCream flex items-center justify-center py-8 fade-in">
+    <div className="min-h-screen bg-gradient-to-br from-barberCream via-white to-barberCream dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center py-8 fade-in">
       <div className="max-w-md w-full mx-4">
         <button
           onClick={onBack}
-          className="mb-6 flex items-center text-barberGray hover:text-barberRed transition-all duration-300 group"
+          className="mb-6 flex items-center text-barberGray dark:text-gray-300 hover:text-barberRed dark:hover:text-red-400 transition-all duration-300 group"
         >
           <span className="text-xl group-hover:-translate-x-1 transition-transform duration-300">←</span>
           <span className="ml-2 font-semibold">Volver al Sistema</span>
         </button>
 
-        <div className="bg-white rounded-2xl shadow-2xl p-8 border border-barberCream">
+        <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl p-8 border border-barberCream dark:border-gray-700">
           <div className="text-center mb-8">
             <div className="w-20 h-20 bg-gradient-to-r from-barberRed to-barberBlue rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
               <span className="text-2xl text-white">🔐</span>
             </div>
-            <h1 className="text-3xl font-display font-bold text-barberDark">Panel Administrador</h1>
-            <p className="text-barberGray mt-2">Acceso exclusivo para el equipo</p>
+            <h1 className="text-3xl font-display font-bold text-barberDark dark:text-white mb-2">
+              Panel Administrador
+            </h1>
+            <p className="text-barberGray dark:text-gray-400">Acceso exclusivo para el equipo</p>
+            
+            {/* Datos de prueba */}
+            <div className="mt-4 p-3 bg-barberCream dark:bg-gray-700 rounded-xl">
+              <p className="text-sm text-barberGray dark:text-gray-300 mb-1">
+                <strong>Datos de prueba:</strong>
+              </p>
+              <p className="text-xs text-barberGray dark:text-gray-400">
+                Usuario: <strong>admin</strong> | Contraseña: <strong>admin123</strong>
+              </p>
+              <p className="text-xs text-barberGray dark:text-gray-400">
+                Usuario: <strong>staff</strong> | Contraseña: <strong>staff123</strong>
+              </p>
+            </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-                <p className="text-red-800 text-sm">{error}</p>
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
+                <p className="text-red-800 dark:text-red-300 text-sm">{error}</p>
               </div>
             )}
 
             <div>
-              <label className="block text-sm font-semibold text-barberDark mb-2">
+              <label className="block text-sm font-semibold text-barberDark dark:text-gray-200 mb-2">
                 Usuario
               </label>
               <input
@@ -75,13 +125,13 @@ const AdminLogin = ({ onLogin, onBack }) => {
                 value={formData.username}
                 onChange={handleChange}
                 required
-                className="w-full p-4 bg-white border-2 border-barberCream rounded-xl focus:outline-none focus:border-barberBlue focus:ring-2 focus:ring-barberBlue text-barberDark placeholder-barberGray"
+                className="w-full p-4 bg-white dark:bg-gray-700 border-2 border-barberCream dark:border-gray-600 rounded-xl focus:outline-none focus:border-barberBlue focus:ring-2 focus:ring-barberBlue text-barberDark dark:text-white placeholder-barberGray dark:placeholder-gray-400"
                 placeholder="Ingresa tu usuario"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-barberDark mb-2">
+              <label className="block text-sm font-semibold text-barberDark dark:text-gray-200 mb-2">
                 Contraseña
               </label>
               <input
@@ -90,7 +140,7 @@ const AdminLogin = ({ onLogin, onBack }) => {
                 value={formData.password}
                 onChange={handleChange}
                 required
-                className="w-full p-4 bg-white border-2 border-barberCream rounded-xl focus:outline-none focus:border-barberBlue focus:ring-2 focus:ring-barberBlue text-barberDark placeholder-barberGray"
+                className="w-full p-4 bg-white dark:bg-gray-700 border-2 border-barberCream dark:border-gray-600 rounded-xl focus:outline-none focus:border-barberBlue focus:ring-2 focus:ring-barberBlue text-barberDark dark:text-white placeholder-barberGray dark:placeholder-gray-400"
                 placeholder="Ingresa tu contraseña"
               />
             </div>
@@ -98,10 +148,10 @@ const AdminLogin = ({ onLogin, onBack }) => {
             <button
               type="submit"
               disabled={loading}
-              className={`w-full py-4 rounded-xl font-semibold text-lg transition-all duration-300 ${
+              className={`w-full py-4 rounded-xl font-semibold text-lg transition-all duration-300 shadow-lg ${
                 loading
-                  ? 'bg-gray-100 cursor-not-allowed text-black'
-                  : 'bg-red-100 hover:bg-red-200 text-black hover-lift shadow-lg'
+                  ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed text-barberGray dark:text-gray-400'
+                  : 'bg-gradient-to-r from-barberRed to-barberBlue hover:from-red-600 hover:to-blue-700 text-white hover-lift'
               }`}
             >
               {loading ? (

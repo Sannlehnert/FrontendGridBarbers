@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import { appointmentsAPI, barbersAPI } from '../services/api';
+import { useNotification } from '../contexts/NotificationContext';
 
 const AdminPanel = ({ onBack, user }) => {
   const [activeTab, setActiveTab] = useState('appointments');
@@ -22,6 +23,8 @@ const AdminPanel = ({ onBack, user }) => {
   });
   const [imagePreview, setImagePreview] = useState(null);
 
+  const { showSuccess, showError } = useNotification();
+
   useEffect(() => {
     if (activeTab === 'appointments') {
       loadAppointments();
@@ -38,11 +41,11 @@ const AdminPanel = ({ onBack, user }) => {
       setAppointments(response.data);
     } catch (error) {
       console.error('Error loading appointments:', error);
-      alert('Error al cargar los turnos: ' + (error.response?.data?.error || error.message));
+      showError('Error al cargar los turnos');
     } finally {
       setLoading(false);
     }
-  }, [selectedDate]);
+  }, [selectedDate, showError]);
 
   const loadBarbers = useCallback(async () => {
     try {
@@ -51,11 +54,11 @@ const AdminPanel = ({ onBack, user }) => {
       setBarbers(response.data);
     } catch (error) {
       console.error('Error loading barbers:', error);
-      alert('Error al cargar los barberos: ' + (error.response?.data?.error || error.message));
+      showError('Error al cargar los barberos');
     } finally {
       setLoadingBarbers(false);
     }
-  }, []);
+  }, [showError]);
 
   const loadStats = useCallback(async () => {
     try {
@@ -72,10 +75,10 @@ const AdminPanel = ({ onBack, user }) => {
         await appointmentsAPI.cancel(appointmentId);
         await loadAppointments();
         await loadStats();
-        alert('Turno cancelado exitosamente');
+        showSuccess('Turno cancelado exitosamente');
       } catch (error) {
         console.error('Error canceling appointment:', error);
-        alert('Error al cancelar el turno: ' + (error.response?.data?.error || error.message));
+        showError('Error al cancelar el turno');
       }
     }
   };
@@ -86,10 +89,10 @@ const AdminPanel = ({ onBack, user }) => {
         await appointmentsAPI.confirm(appointmentId);
         await loadAppointments();
         await loadStats();
-        alert('Turno confirmado exitosamente');
+        showSuccess('Turno confirmado exitosamente');
       } catch (error) {
         console.error('Error confirming appointment:', error);
-        alert('Error al confirmar el turno: ' + (error.response?.data?.error || error.message));
+        showError('Error al confirmar el turno');
       }
     }
   };
@@ -108,10 +111,10 @@ const AdminPanel = ({ onBack, user }) => {
 
       if (editingBarber) {
         await barbersAPI.update(editingBarber.id, formData);
-        alert('Barbero actualizado exitosamente');
+        showSuccess('Barbero actualizado exitosamente');
       } else {
         await barbersAPI.create(formData);
-        alert('Barbero creado exitosamente');
+        showSuccess('Barbero creado exitosamente');
       }
       setShowBarberForm(false);
       setEditingBarber(null);
@@ -120,7 +123,7 @@ const AdminPanel = ({ onBack, user }) => {
       loadBarbers();
     } catch (error) {
       console.error('Error saving barber:', error);
-      alert('Error al guardar el barbero: ' + (error.response?.data?.error || error.message));
+      showError('Error al guardar el barbero');
     }
   };
 
@@ -133,53 +136,58 @@ const AdminPanel = ({ onBack, user }) => {
       image: null
     });
 
-    // Manejar URL de imagen en producción
+    // Manejar URL de imagen
     let imageUrl = barber.image_url;
-    if (imageUrl && !imageUrl.startsWith('http')) {
+    if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('/img/')) {
       imageUrl = `${import.meta.env.VITE_API_URL?.replace('/api', '')}${barber.image_url}`;
+    } else if (imageUrl && imageUrl.startsWith('/img/')) {
+      // Si es una ruta local, la dejamos así
+      imageUrl = imageUrl;
     }
     setImagePreview(imageUrl);
     setShowBarberForm(true);
   };
 
-  // En el render de barberos:
-  {
-    barber.image_url && (
-      <img
-        src={barber.image_url.startsWith('http')
-          ? barber.image_url
-          : `${import.meta.env.VITE_API_URL?.replace('/api', '')}${barber.image_url}`
-        }
-        alt={barber.name}
-        className="w-16 h-16 object-cover rounded-xl border-2 border-barberCream flex-shrink-0"
-        onError={(e) => {
-          e.target.style.display = 'none';
-        }}
-      />
-    )
-  }
+  const handleDeleteBarber = async (barberId) => {
+    if (window.confirm('¿Estás seguro de que quieres eliminar este barbero?')) {
+      try {
+        await barbersAPI.delete(barberId);
+        showSuccess('Barbero eliminado exitosamente');
+        loadBarbers();
+      } catch (error) {
+        console.error('Error deleting barber:', error);
+        showError(error.response?.data?.error || 'Error al eliminar el barbero');
+      }
+    }
+  };
+
   const resetBarberForm = () => {
     setShowBarberForm(false);
     setEditingBarber(null);
-    setBarberForm({ name: '', email: '', phone: '' });
+    setBarberForm({ name: '', email: '', phone: '', image: null });
+    setImagePreview(null);
   };
 
   return (
-    <div className="min-h-screen bg-barberCream py-4 sm:py-8">
+    <div className="min-h-screen bg-barberCream dark:bg-gray-900 py-4 sm:py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 sm:mb-8 gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-display font-bold text-barberDark">Panel Administrador</h1>
-            <p className="text-barberGray text-sm sm:text-base">
+            <h1 className="text-2xl sm:text-3xl font-display font-bold text-barberDark dark:text-white">
+              Panel Administrador
+            </h1>
+            <p className="text-barberGray dark:text-gray-300 text-sm sm:text-base">
               Bienvenido, {user?.name} |{' '}
-              <span className="text-xs sm:text-sm ml-2 text-barberGray">{user?.username}</span>
+              <span className="text-xs sm:text-sm ml-2 text-barberGray dark:text-gray-400">
+                {user?.username}
+              </span>
             </p>
           </div>
           <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 w-full sm:w-auto">
             <button
               onClick={onBack}
-              className="bg-blue-100 hover:bg-blue-200 text-black px-4 sm:px-6 py-2 rounded-xl font-semibold transition-all duration-300 hover-lift text-sm sm:text-base"
+              className="bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-800 text-black dark:text-white px-4 sm:px-6 py-2 rounded-xl font-semibold transition-all duration-300 hover-lift text-sm sm:text-base"
             >
               ← Volver al Sistema
             </button>
@@ -189,7 +197,7 @@ const AdminPanel = ({ onBack, user }) => {
                 localStorage.removeItem('adminUser');
                 onBack();
               }}
-              className="bg-gray-100 hover:bg-gray-200 text-black px-4 py-2 rounded-xl font-semibold transition-all duration-300 hover-lift text-sm"
+              className="bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-black dark:text-white px-4 py-2 rounded-xl font-semibold transition-all duration-300 hover-lift text-sm"
             >
               Cerrar Sesión
             </button>
@@ -197,24 +205,26 @@ const AdminPanel = ({ onBack, user }) => {
         </div>
 
         {/* Tabs */}
-        <div className="bg-white rounded-2xl shadow-lg mb-6 border border-barberCream">
-          <div className="border-b border-barberCream">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg mb-6 border border-barberCream dark:border-gray-700">
+          <div className="border-b border-barberCream dark:border-gray-700">
             <nav className="flex -mb-px">
               <button
                 onClick={() => setActiveTab('appointments')}
-                className={`py-4 px-6 text-center border-b-2 font-semibold text-sm transition-all duration-300 ${activeTab === 'appointments'
-                    ? 'border-barberRed text-barberRed'
-                    : 'border-transparent text-barberGray hover:text-barberDark hover:border-barberGray'
-                  }`}
+                className={`py-4 px-6 text-center border-b-2 font-semibold text-sm transition-all duration-300 ${
+                  activeTab === 'appointments'
+                    ? 'border-barberRed text-barberRed dark:text-red-400 dark:border-red-400'
+                    : 'border-transparent text-barberGray dark:text-gray-400 hover:text-barberDark dark:hover:text-gray-300 hover:border-barberGray dark:hover:border-gray-600'
+                }`}
               >
                 📅 Gestión de Turnos
               </button>
               <button
                 onClick={() => setActiveTab('barbers')}
-                className={`py-4 px-6 text-center border-b-2 font-semibold text-sm transition-all duration-300 ${activeTab === 'barbers'
-                    ? 'border-barberRed text-barberRed'
-                    : 'border-transparent text-barberGray hover:text-barberDark hover:border-barberGray'
-                  }`}
+                className={`py-4 px-6 text-center border-b-2 font-semibold text-sm transition-all duration-300 ${
+                  activeTab === 'barbers'
+                    ? 'border-barberRed text-barberRed dark:text-red-400 dark:border-red-400'
+                    : 'border-transparent text-barberGray dark:text-gray-400 hover:text-barberDark dark:hover:text-gray-300 hover:border-barberGray dark:hover:border-gray-600'
+                }`}
               >
                 👨‍💼 Gestión de Barberos
               </button>
@@ -226,22 +236,22 @@ const AdminPanel = ({ onBack, user }) => {
         {activeTab === 'appointments' && (
           <>
             {/* Filtros */}
-            <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 mb-6 border border-barberCream">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-4 sm:p-6 mb-6 border border-barberCream dark:border-gray-700">
               <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
                 <div className="w-full sm:w-auto">
-                  <label className="block text-sm font-semibold text-barberDark mb-2">
+                  <label className="block text-sm font-semibold text-barberDark dark:text-gray-200 mb-2">
                     Filtrar por fecha
                   </label>
                   <input
                     type="date"
                     value={selectedDate}
                     onChange={(e) => setSelectedDate(e.target.value)}
-                    className="w-full sm:w-auto p-3 bg-white border-2 border-barberCream rounded-xl focus:border-barberBlue focus:outline-none"
+                    className="w-full sm:w-auto p-3 bg-white dark:bg-gray-700 border-2 border-barberCream dark:border-gray-600 rounded-xl focus:border-barberBlue focus:outline-none text-barberDark dark:text-white"
                   />
                 </div>
                 <button
                   onClick={loadAppointments}
-                  className="bg-blue-100 hover:bg-blue-200 text-black px-4 py-3 rounded-xl font-semibold transition-all duration-300 hover-lift w-full sm:w-auto"
+                  className="bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-800 text-black dark:text-white px-4 py-3 rounded-xl font-semibold transition-all duration-300 hover-lift w-full sm:w-auto"
                 >
                   🔄 Actualizar
                 </button>
@@ -249,8 +259,8 @@ const AdminPanel = ({ onBack, user }) => {
             </div>
 
             {/* Lista de Turnos */}
-            <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 border border-barberCream">
-              <h2 className="text-xl sm:text-2xl font-display font-semibold text-barberDark mb-4">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-4 sm:p-6 border border-barberCream dark:border-gray-700">
+              <h2 className="text-xl sm:text-2xl font-display font-semibold text-barberDark dark:text-white mb-4">
                 Turnos del {new Date(selectedDate).toLocaleDateString('es-ES', {
                   weekday: 'long',
                   year: 'numeric',
@@ -262,46 +272,75 @@ const AdminPanel = ({ onBack, user }) => {
               {loading ? (
                 <div className="text-center py-8">
                   <div className="loading-spinner mx-auto mb-4"></div>
-                  <p className="text-barberGray">Cargando turnos...</p>
+                  <p className="text-barberGray dark:text-gray-400">Cargando turnos...</p>
                 </div>
               ) : appointments.length === 0 ? (
-                <div className="text-center py-8 text-barberGray">
+                <div className="text-center py-8 text-barberGray dark:text-gray-400">
                   <p className="text-base sm:text-lg">No hay turnos para la fecha seleccionada</p>
-                  <p className="text-xs sm:text-sm mt-2">Los turnos aparecerán aquí cuando los clientes hagan reservas</p>
+                  <p className="text-xs sm:text-sm mt-2">
+                    Los turnos aparecerán aquí cuando los clientes hagan reservas
+                  </p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm sm:text-base">
                     <thead>
-                      <tr className="bg-barberCream">
-                        <th className="px-2 sm:px-4 py-3 text-left text-barberDark font-semibold">Cliente</th>
-                        <th className="px-2 sm:px-4 py-3 text-left text-barberDark font-semibold">Barbero</th>
-                        <th className="px-2 sm:px-4 py-3 text-left text-barberDark font-semibold">Servicio</th>
-                        <th className="px-2 sm:px-4 py-3 text-left text-barberDark font-semibold">Fecha/Hora</th>
-                        <th className="px-2 sm:px-4 py-3 text-left text-barberDark font-semibold">Estado</th>
-                        <th className="px-2 sm:px-4 py-3 text-left text-barberDark font-semibold">Acciones</th>
+                      <tr className="bg-barberCream dark:bg-gray-700">
+                        <th className="px-2 sm:px-4 py-3 text-left text-barberDark dark:text-gray-200 font-semibold">
+                          Cliente
+                        </th>
+                        <th className="px-2 sm:px-4 py-3 text-left text-barberDark dark:text-gray-200 font-semibold">
+                          Barbero
+                        </th>
+                        <th className="px-2 sm:px-4 py-3 text-left text-barberDark dark:text-gray-200 font-semibold">
+                          Servicio
+                        </th>
+                        <th className="px-2 sm:px-4 py-3 text-left text-barberDark dark:text-gray-200 font-semibold">
+                          Fecha/Hora
+                        </th>
+                        <th className="px-2 sm:px-4 py-3 text-left text-barberDark dark:text-gray-200 font-semibold">
+                          Estado
+                        </th>
+                        <th className="px-2 sm:px-4 py-3 text-left text-barberDark dark:text-gray-200 font-semibold">
+                          Acciones
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
                       {appointments.map((appointment) => (
-                        <tr key={appointment.id} className="border-b border-barberCream hover:bg-barberCream">
+                        <tr
+                          key={appointment.id}
+                          className="border-b border-barberCream dark:border-gray-700 hover:bg-barberCream dark:hover:bg-gray-700"
+                        >
                           <td className="px-2 sm:px-4 py-3">
                             <div>
-                              <p className="font-semibold text-barberDark text-sm sm:text-base">{appointment.customer_name}</p>
-                              <p className="text-xs sm:text-sm text-barberGray">{appointment.customer_phone}</p>
+                              <p className="font-semibold text-barberDark dark:text-gray-200 text-sm sm:text-base">
+                                {appointment.customer_name}
+                              </p>
+                              <p className="text-xs sm:text-sm text-barberGray dark:text-gray-400">
+                                {appointment.customer_phone}
+                              </p>
                               {appointment.customer_email && (
-                                <p className="text-xs sm:text-sm text-barberGray">{appointment.customer_email}</p>
+                                <p className="text-xs sm:text-sm text-barberGray dark:text-gray-400">
+                                  {appointment.customer_email}
+                                </p>
                               )}
                             </div>
                           </td>
-                          <td className="px-2 sm:px-4 py-3 text-barberDark text-sm sm:text-base">{appointment.barber_name}</td>
+                          <td className="px-2 sm:px-4 py-3 text-barberDark dark:text-gray-200 text-sm sm:text-base">
+                            {appointment.barber_name}
+                          </td>
                           <td className="px-2 sm:px-4 py-3">
                             <div>
-                              <p className="font-semibold text-barberDark text-sm sm:text-base">{appointment.service_name}</p>
-                              <p className="text-xs sm:text-sm text-barberGray">${appointment.price.toLocaleString('es-ES')} - {appointment.duration}min</p>
+                              <p className="font-semibold text-barberDark dark:text-gray-200 text-sm sm:text-base">
+                                {appointment.service_name}
+                              </p>
+                              <p className="text-xs sm:text-sm text-barberGray dark:text-gray-400">
+                                ${appointment.price.toLocaleString('es-ES')} - {appointment.duration}min
+                              </p>
                             </div>
                           </td>
-                          <td className="px-2 sm:px-4 py-3 text-barberDark text-sm sm:text-base">
+                          <td className="px-2 sm:px-4 py-3 text-barberDark dark:text-gray-200 text-sm sm:text-base">
                             {new Date(appointment.appointment_date).toLocaleString('es-ES', {
                               year: 'numeric',
                               month: '2-digit',
@@ -311,14 +350,20 @@ const AdminPanel = ({ onBack, user }) => {
                             })}
                           </td>
                           <td className="px-2 sm:px-4 py-3">
-                            <span className={`px-2 sm:px-3 py-1 rounded-full text-xs font-semibold ${appointment.status === 'confirmed'
-                                ? 'bg-green-100 text-green-800'
+                            <span
+                              className={`px-2 sm:px-3 py-1 rounded-full text-xs font-semibold ${
+                                appointment.status === 'confirmed'
+                                  ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
+                                  : appointment.status === 'pending'
+                                  ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'
+                                  : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+                              }`}
+                            >
+                              {appointment.status === 'confirmed'
+                                ? 'Confirmado'
                                 : appointment.status === 'pending'
-                                  ? 'bg-yellow-100 text-yellow-800'
-                                  : 'bg-red-100 text-red-800'
-                              }`}>
-                              {appointment.status === 'confirmed' ? 'Confirmado' :
-                                appointment.status === 'pending' ? 'Pendiente' : 'Cancelado'}
+                                ? 'Pendiente'
+                                : 'Cancelado'}
                             </span>
                           </td>
                           <td className="px-2 sm:px-4 py-3">
@@ -327,13 +372,13 @@ const AdminPanel = ({ onBack, user }) => {
                                 <>
                                   <button
                                     onClick={() => handleConfirmAppointment(appointment.id)}
-                                    className="bg-green-100 hover:bg-green-200 text-black px-2 sm:px-3 py-1 rounded-xl text-sm sm:text-base font-semibold transition-all duration-300 hover-lift"
+                                    className="bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-800 text-black dark:text-white px-2 sm:px-3 py-1 rounded-xl text-sm sm:text-base font-semibold transition-all duration-300 hover-lift"
                                   >
                                     Confirmar
                                   </button>
                                   <button
                                     onClick={() => handleCancelAppointment(appointment.id)}
-                                    className="bg-red-100 hover:bg-red-200 text-black px-2 sm:px-3 py-1 rounded-xl text-sm sm:text-base font-semibold transition-all duration-300 hover-lift"
+                                    className="bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-800 text-black dark:text-white px-2 sm:px-3 py-1 rounded-xl text-sm sm:text-base font-semibold transition-all duration-300 hover-lift"
                                   >
                                     Cancelar
                                   </button>
@@ -342,13 +387,15 @@ const AdminPanel = ({ onBack, user }) => {
                               {appointment.status === 'confirmed' && (
                                 <button
                                   onClick={() => handleCancelAppointment(appointment.id)}
-                                  className="bg-red-100 hover:bg-red-200 text-black px-2 sm:px-3 py-1 rounded-xl text-sm sm:text-base font-semibold transition-all duration-300 hover-lift"
+                                  className="bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-800 text-black dark:text-white px-2 sm:px-3 py-1 rounded-xl text-sm sm:text-base font-semibold transition-all duration-300 hover-lift"
                                 >
                                   Cancelar
                                 </button>
                               )}
                               {appointment.status === 'cancelled' && (
-                                <span className="text-barberGray text-xs sm:text-sm">Acciones no disponibles</span>
+                                <span className="text-barberGray dark:text-gray-400 text-xs sm:text-sm">
+                                  Acciones no disponibles
+                                </span>
                               )}
                             </div>
                           </td>
@@ -362,33 +409,37 @@ const AdminPanel = ({ onBack, user }) => {
 
             {/* Estadísticas */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-6">
-              <div className="bg-white rounded-2xl shadow-lg p-6 text-center border border-barberCream">
-                <div className="text-3xl font-bold text-barberBlue">{stats.today}</div>
-                <div className="text-barberGray">Turnos Hoy</div>
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 text-center border border-barberCream dark:border-gray-700">
+                <div className="text-3xl font-bold text-barberBlue dark:text-blue-400">{stats.today}</div>
+                <div className="text-barberGray dark:text-gray-400">Turnos Hoy</div>
               </div>
-              <div className="bg-white rounded-2xl shadow-lg p-6 text-center border border-barberCream">
-                <div className="text-3xl font-bold text-green-500">{stats.confirmed}</div>
-                <div className="text-barberGray">Confirmados</div>
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 text-center border border-barberCream dark:border-gray-700">
+                <div className="text-3xl font-bold text-green-500 dark:text-green-400">{stats.confirmed}</div>
+                <div className="text-barberGray dark:text-gray-400">Confirmados</div>
               </div>
-              <div className="bg-white rounded-2xl shadow-lg p-6 text-center border border-barberCream">
-                <div className="text-3xl font-bold text-yellow-500">{appointments.filter(a => a.status === 'pending').length}</div>
-                <div className="text-barberGray">Pendientes</div>
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 text-center border border-barberCream dark:border-gray-700">
+                <div className="text-3xl font-bold text-yellow-500 dark:text-yellow-400">
+                  {appointments.filter(a => a.status === 'pending').length}
+                </div>
+                <div className="text-barberGray dark:text-gray-400">Pendientes</div>
               </div>
-              <div className="bg-white rounded-2xl shadow-lg p-6 text-center border border-barberCream">
-                <div className="text-3xl font-bold text-red-500">{stats.cancelled}</div>
-                <div className="text-barberGray">Cancelados</div>
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 text-center border border-barberCream dark:border-gray-700">
+                <div className="text-3xl font-bold text-red-500 dark:text-red-400">{stats.cancelled}</div>
+                <div className="text-barberGray dark:text-gray-400">Cancelados</div>
               </div>
             </div>
           </>
         )}
 
         {activeTab === 'barbers' && (
-          <div className="bg-white rounded-2xl shadow-lg p-6 border border-barberCream">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 border border-barberCream dark:border-gray-700">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-display font-semibold text-barberDark">Gestión de Barberos</h2>
+              <h2 className="text-2xl font-display font-semibold text-barberDark dark:text-white">
+                Gestión de Barberos
+              </h2>
               <button
                 onClick={() => setShowBarberForm(true)}
-                className="bg-red-100 hover:bg-red-200 text-black px-4 py-2 rounded-xl font-semibold transition-all duration-300 hover-lift"
+                className="bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-800 text-black dark:text-white px-4 py-2 rounded-xl font-semibold transition-all duration-300 hover-lift"
               >
                 ➕ Agregar Barbero
               </button>
@@ -396,13 +447,13 @@ const AdminPanel = ({ onBack, user }) => {
 
             {/* Formulario de Barbero */}
             {showBarberForm && (
-              <div className="mb-6 p-6 bg-barberCream rounded-2xl border border-barberCream">
-                <h3 className="text-lg font-display font-semibold text-barberDark mb-4">
+              <div className="mb-6 p-6 bg-barberCream dark:bg-gray-700 rounded-2xl border border-barberCream dark:border-gray-600">
+                <h3 className="text-lg font-display font-semibold text-barberDark dark:text-white mb-4">
                   {editingBarber ? 'Editar Barbero' : 'Nuevo Barbero'}
                 </h3>
                 <form onSubmit={handleBarberSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-semibold text-barberDark mb-2">
+                    <label className="block text-sm font-semibold text-barberDark dark:text-gray-200 mb-2">
                       Nombre completo *
                     </label>
                     <input
@@ -410,36 +461,36 @@ const AdminPanel = ({ onBack, user }) => {
                       value={barberForm.name}
                       onChange={(e) => setBarberForm({ ...barberForm, name: e.target.value })}
                       required
-                      className="w-full p-3 bg-white border-2 border-barberCream rounded-xl focus:border-barberBlue focus:outline-none"
+                      className="w-full p-3 bg-white dark:bg-gray-800 border-2 border-barberCream dark:border-gray-600 rounded-xl focus:border-barberBlue focus:outline-none text-barberDark dark:text-white"
                       placeholder="Ej: Carlos Rodríguez"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-barberDark mb-2">
+                    <label className="block text-sm font-semibold text-barberDark dark:text-gray-200 mb-2">
                       Email
                     </label>
                     <input
                       type="email"
                       value={barberForm.email}
                       onChange={(e) => setBarberForm({ ...barberForm, email: e.target.value })}
-                      className="w-full p-3 bg-white border-2 border-barberCream rounded-xl focus:border-barberBlue focus:outline-none"
+                      className="w-full p-3 bg-white dark:bg-gray-800 border-2 border-barberCream dark:border-gray-600 rounded-xl focus:border-barberBlue focus:outline-none text-barberDark dark:text-white"
                       placeholder="Ej: carlos@barberia.com"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-barberDark mb-2">
+                    <label className="block text-sm font-semibold text-barberDark dark:text-gray-200 mb-2">
                       Teléfono
                     </label>
                     <input
                       type="tel"
                       value={barberForm.phone}
                       onChange={(e) => setBarberForm({ ...barberForm, phone: e.target.value })}
-                      className="w-full p-3 bg-white border-2 border-barberCream rounded-xl focus:border-barberBlue focus:outline-none"
+                      className="w-full p-3 bg-white dark:bg-gray-800 border-2 border-barberCream dark:border-gray-600 rounded-xl focus:border-barberBlue focus:outline-none text-barberDark dark:text-white"
                       placeholder="Ej: +541123456789"
                     />
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-semibold text-barberDark mb-2">
+                    <label className="block text-sm font-semibold text-barberDark dark:text-gray-200 mb-2">
                       Foto de perfil
                     </label>
                     <input
@@ -454,25 +505,29 @@ const AdminPanel = ({ onBack, user }) => {
                           reader.readAsDataURL(file);
                         }
                       }}
-                      className="w-full p-3 bg-white border-2 border-barberCream rounded-xl focus:border-barberBlue focus:outline-none file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-barberBlue file:text-white hover:file:bg-blue-700"
+                      className="w-full p-3 bg-white dark:bg-gray-800 border-2 border-barberCream dark:border-gray-600 rounded-xl focus:border-barberBlue focus:outline-none text-barberDark dark:text-white file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-barberBlue file:text-white hover:file:bg-blue-700"
                     />
                     {imagePreview && (
                       <div className="mt-4">
-                        <img src={imagePreview} alt="Preview" className="w-24 h-24 object-cover rounded-xl border-2 border-barberCream" />
+                        <img
+                          src={imagePreview}
+                          alt="Preview"
+                          className="w-24 h-24 object-cover rounded-xl border-2 border-barberCream dark:border-gray-600"
+                        />
                       </div>
                     )}
                   </div>
                   <div className="flex items-end space-x-2">
                     <button
                       type="submit"
-                      className="bg-blue-100 hover:bg-blue-200 text-black px-4 py-3 rounded-xl font-semibold transition-all duration-300 hover-lift"
+                      className="bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-800 text-black dark:text-white px-4 py-3 rounded-xl font-semibold transition-all duration-300 hover-lift"
                     >
                       {editingBarber ? '💾 Actualizar' : '✅ Crear'}
                     </button>
                     <button
                       type="button"
                       onClick={resetBarberForm}
-                      className="bg-gray-100 hover:bg-gray-200 text-black px-4 py-3 rounded-xl font-semibold transition-all duration-300 hover-lift"
+                      className="bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-black dark:text-white px-4 py-3 rounded-xl font-semibold transition-all duration-300 hover-lift"
                     >
                       Cancelar
                     </button>
@@ -485,35 +540,57 @@ const AdminPanel = ({ onBack, user }) => {
             {loadingBarbers ? (
               <div className="text-center py-8">
                 <div className="loading-spinner mx-auto mb-4"></div>
-                <p className="text-barberGray">Cargando barberos...</p>
+                <p className="text-barberGray dark:text-gray-400">Cargando barberos...</p>
               </div>
             ) : barbers.length === 0 ? (
-              <div className="text-center py-8 text-barberGray">
+              <div className="text-center py-8 text-barberGray dark:text-gray-400">
                 <p>No hay barberos registrados</p>
-                <p className="text-sm mt-2">Agrega el primer barbero usando el botón "Agregar Barbero"</p>
+                <p className="text-sm mt-2">
+                  Agrega el primer barbero usando el botón "Agregar Barbero"
+                </p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {barbers.map((barber) => (
-                  <div key={barber.id} className="bg-white border-2 border-barberCream hover:border-barberBlue rounded-2xl p-6 transition-all duration-300 hover-lift">
+                  <div
+                    key={barber.id}
+                    className="bg-white dark:bg-gray-800 border-2 border-barberCream dark:border-gray-700 hover:border-barberBlue dark:hover:border-blue-500 rounded-2xl p-6 transition-all duration-300 hover-lift"
+                  >
                     <div className="flex items-start justify-between">
                       <div className="flex items-start space-x-4 flex-1">
-                        {barber.image_url && (
+                        {barber.image_url ? (
                           <img
-                            src={`https://backendgridbarbers.onrender.com${barber.image_url}`}
+                            src={
+                              barber.image_url.startsWith('http')
+                                ? barber.image_url
+                                : barber.image_url.startsWith('/img/')
+                                ? barber.image_url
+                                : `/img/logo.png`
+                            }
                             alt={barber.name}
-                            className="w-16 h-16 object-cover rounded-xl border-2 border-barberCream flex-shrink-0"
+                            className="w-16 h-16 object-cover rounded-xl border-2 border-barberCream dark:border-gray-600 flex-shrink-0"
+                            onError={(e) => {
+                              e.target.src = '/img/logo.png';
+                            }}
                           />
+                        ) : (
+                          <div className="w-16 h-16 bg-gradient-to-r from-red-100 to-blue-100 dark:from-red-900/30 dark:to-blue-900/30 rounded-xl border-2 border-barberCream dark:border-gray-600 flex items-center justify-center text-2xl">
+                            👨‍💼
+                          </div>
                         )}
                         <div className="flex-1">
-                          <h3 className="font-display text-xl font-semibold text-barberDark">{barber.name}</h3>
+                          <h3 className="font-display text-xl font-semibold text-barberDark dark:text-white">
+                            {barber.name}
+                          </h3>
                           {barber.email && (
-                            <p className="text-barberGray text-sm mt-1">{barber.email}</p>
+                            <p className="text-barberGray dark:text-gray-400 text-sm mt-1">
+                              {barber.email}
+                            </p>
                           )}
                           {barber.phone && (
-                            <p className="text-barberGray text-sm">{barber.phone}</p>
+                            <p className="text-barberGray dark:text-gray-400 text-sm">{barber.phone}</p>
                           )}
-                          <p className="text-barberGray text-xs mt-2">
+                          <p className="text-barberGray dark:text-gray-400 text-xs mt-2">
                             Creado: {new Date(barber.created_at).toLocaleDateString('es-ES')}
                           </p>
                         </div>
@@ -521,14 +598,14 @@ const AdminPanel = ({ onBack, user }) => {
                       <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 ml-4">
                         <button
                           onClick={() => handleEditBarber(barber)}
-                          className="bg-blue-100 hover:bg-blue-200 text-black px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-300 hover-lift w-full sm:w-auto"
+                          className="bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-800 text-black dark:text-white px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-300 hover-lift w-full sm:w-auto"
                           title="Editar barbero"
                         >
                           ✏️ Editar
                         </button>
                         <button
                           onClick={() => handleDeleteBarber(barber.id)}
-                          className="bg-red-100 hover:bg-red-200 text-black px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-300 hover-lift w-full sm:w-auto"
+                          className="bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-800 text-black dark:text-white px-3 py-2 rounded-lg text-sm font-semibold transition-all duration-300 hover-lift w-full sm:w-auto"
                           title="Eliminar barbero"
                         >
                           🗑️ Eliminar
